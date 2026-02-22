@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "CodeArena - Master algorithms and compete globally",
+  title: "CodeX - Master algorithms and compete globally",
   description: "Real-Time Competitive Programming Platform",
 };
 

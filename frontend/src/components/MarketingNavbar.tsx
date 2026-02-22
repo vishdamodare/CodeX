@@ -7,7 +7,7 @@ export default function MarketingNavbar() {
             <div className="nav-left">
                 <Link href="/" className="nav-logo" style={{ color: "var(--text-primary)" }}>
                     <Zap size={24} color="var(--accent-green)" />
-                    CodeArena
+                    CodeX
                 </Link>
             </div>
 
