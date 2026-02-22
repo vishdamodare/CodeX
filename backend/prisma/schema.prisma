@@ -1,0 +1,104 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:../dev.db"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  email     String   @unique
+  password  String
+  rating    Int      @default(1500)
+  createdAt DateTime @default(now())
+  submissions Submission[]
+  
+  userMissions UserMission[]
+  topicStats   UserTopicStat[]
+}
+
+model Problem {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  difficulty  String   // "Easy", "Medium", "Hard"
+  tags        String   // JSON string of tags
+  acceptance  Float    @default(0)
+  submissions Submission[]
+  
+  missionLevels MissionLevel[]
+}
+
+model Submission {
+  id         String   @id @default(uuid())
+  code       String
+  language   String
+  status     String   // "Accepted", "Wrong Answer", "TLE"
+  runtime    Float?
+  memory     Float?
+  createdAt  DateTime @default(now())
+
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  
+  problemId  String
+  problem    Problem  @relation(fields: [problemId], references: [id])
+}
+
+// ----------------------------------------------------
+// CODE:X INTELLIGENCE ENGINE & MISSION DB MODELS
+// ----------------------------------------------------
+
+model Mission {
+  id           String         @id @default(uuid())
+  title        String
+  topic        String
+  total_levels Int
+  
+  levels       MissionLevel[]
+  userProgress UserMission[]
+}
+
+model MissionLevel {
+  id           String   @id @default(uuid())
+  order_index  Int
+  difficulty   String
+  
+  missionId    String
+  mission      Mission  @relation(fields: [missionId], references: [id])
+  
+  problemId    String
+  problem      Problem  @relation(fields: [problemId], references: [id])
+}
+
+model UserMission {
+  id            String   @id @default(uuid())
+  current_level Int      @default(1)
+  accuracy      Float    @default(0.0)
+  completed     Boolean  @default(false)
+  
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  
+  missionId     String
+  mission       Mission  @relation(fields: [missionId], references: [id])
+
+  @@unique([userId, missionId])
+}
+
+model UserTopicStat {
+  id                 String   @id @default(uuid())
+  topic              String
+  total_attempted    Int      @default(0)
+  total_solved       Int      @default(0)
+  avg_runtime_ratio  Float    @default(1.0)
+  common_error_type  String?
+  
+  userId             String
+  user               User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, topic])
+}
