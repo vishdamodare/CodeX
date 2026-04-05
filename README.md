@@ -64,7 +64,8 @@ We welcome contributions! Please follow these steps:
 5. Open a pull request.
 
 ## License
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License  and all right are reserved to vishwadip damodare- see the [LICENSE](LICENSE) file for details. 
 
 ## Acknowledgements
-- Thanks to all contributors for their efforts!
+- Thanks to myself
+- !
