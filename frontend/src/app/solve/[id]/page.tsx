@@ -48,6 +48,17 @@ export default function SolvePage() {
     const [submitStats, setSubmitStats] = useState<any>(null);
     const [editorialText, setEditorialText] = useState("");
     const [postedSolutions, setPostedSolutions] = useState<any[]>([]);
+    const [pastSubmissions, setPastSubmissions] = useState<any[]>([]);
+
+    const fetchSubmissions = () => {
+        if (!id) return;
+        fetch(`http://localhost:5001/api/submissions/${id}`)
+            .then(res => res.json())
+            .then(data => {
+                if (Array.isArray(data)) setPastSubmissions(data);
+            })
+            .catch(err => console.error("Failed to load past submissions", err));
+    };
 
     useEffect(() => {
         // Hydrate default code when language changes
@@ -69,7 +80,7 @@ export default function SolvePage() {
             setLoading(false);
         };
 
-        fetch(`http://localhost:5000/api/problems/${id}`)
+        fetch(`http://localhost:5001/api/problems/${id}`)
             .then(res => res.json())
             .then(data => {
                 if (data.error || !data.title) {
@@ -84,6 +95,9 @@ export default function SolvePage() {
                 console.error("Failed to load problem natively, falling back to mock", err);
                 loadFallback();
             });
+
+        // Load passed submissions on mount
+        fetchSubmissions();
     }, [id]);
 
     const handleRun = async () => {
@@ -93,7 +107,7 @@ export default function SolvePage() {
         setRunResults({ status: "running" });
 
         try {
-            const res = await fetch("http://localhost:5000/api/run", {
+            const res = await fetch("http://localhost:5001/api/run", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -123,12 +137,14 @@ export default function SolvePage() {
         setRunResults({ status: "running" });
 
         try {
-            const res = await fetch("http://localhost:5000/api/run", {
+            const res = await fetch("http://localhost:5001/api/run", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     language,
                     code,
+                    problemId: id,
+                    isSubmit: true,
                     testcases: [
                         { nums: [2, 7, 11, 15], target: 9 },
                         { nums: [3, 2, 4], target: 6 },
@@ -161,6 +177,9 @@ export default function SolvePage() {
                         localStorage.setItem("solvedProblems", JSON.stringify(solvedArr));
                     }
                 } catch (e) { }
+
+                // Refresh submissions explicitly after submitting
+                fetchSubmissions();
             } else {
                 setRunResults(data);
                 setActiveBottomTab("result");
@@ -489,6 +508,42 @@ export default function SolvePage() {
                                                                     {sol.code}
                                                                 </div>
                                                             </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {activeTab === 'submissions' && (
+                                    <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
+                                        <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '1.5rem', color: 'var(--text-primary)' }}>Your Submissions</h2>
+                                        {pastSubmissions.length === 0 ? (
+                                            <div style={{ textAlign: 'center', padding: '4rem 1rem', color: 'var(--text-secondary)' }}>
+                                                <Clock size={48} style={{ opacity: 0.2, margin: '0 auto 1rem' }} />
+                                                <p>No past submissions found for this problem.</p>
+                                            </div>
+                                        ) : (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                                {pastSubmissions.map((sub, idx) => (
+                                                    <div key={idx} style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '12px', overflow: 'hidden', padding: '1rem 1.5rem' }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                                                <span style={{ fontWeight: 600, color: sub.status === 'Accepted' ? 'var(--accent-green)' : 'var(--accent-red)' }}>
+                                                                    {sub.status}
+                                                                </span>
+                                                                <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                                                                    {new Date(sub.createdAt).toLocaleString()}
+                                                                </span>
+                                                            </div>
+                                                            <div style={{ padding: '0.2rem 0.6rem', background: 'rgba(255,255,255,0.05)', borderRadius: '99px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                                                                {sub.language}
+                                                            </div>
+                                                        </div>
+                                                        <div style={{ display: 'flex', gap: '1rem', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                                                            <span>Runtime: <span style={{ color: 'var(--text-primary)' }}>{sub.runtime ? `${sub.runtime}ms` : 'N/A'}</span></span>
+                                                            <span>Memory: <span style={{ color: 'var(--text-primary)' }}>{sub.memory ? `${sub.memory}MB` : 'N/A'}</span></span>
                                                         </div>
                                                     </div>
                                                 ))}

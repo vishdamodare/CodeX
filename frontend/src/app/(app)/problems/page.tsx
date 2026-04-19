@@ -68,7 +68,7 @@ export default function ProblemsPage() {
     };
 
     useEffect(() => {
-        fetch("http://localhost:5000/api/problems")
+        fetch("http://localhost:5001/api/problems")
             .then(res => res.json())
             .then(data => {
                 setProblems(data);

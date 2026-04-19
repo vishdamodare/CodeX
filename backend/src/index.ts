@@ -7,7 +7,6 @@ import { prisma } from './prisma';
 import Redis from 'ioredis';
 import axios from 'axios';
 import { executeCode } from './codeRunner';
-import { supabase } from "./supabase";
 console.log("INDEX TS IS RUNNING !!!");
 
 const redis = new Redis({
@@ -28,12 +27,7 @@ app.use(cors());
 
 app.get('/api/problems', async (req: Request, res: Response) => {
     try {
-        const { data, error } = await supabase
-            .from("Problem")   // IMPORTANT: capital P (your table name)
-            .select("*");
-
-        if (error) return res.status(400).json(error);
-
+        const data = await prisma.problem.findMany();
         res.json(data);
     } catch (error) {
         console.error(error);
@@ -49,13 +43,11 @@ app.get('/health', (req: Request, res: Response) => {
 // API Routes handling the Problem dataset logic (moved from frontend API)
 app.get('/api/problems/:id', async (req: Request, res: Response) => {
     try {
-        const { data, error } = await supabase
-            .from("Problem")
-            .select("*")
-            .eq("id", String(req.params.id))
-            .single();
+        const data = await prisma.problem.findUnique({
+            where: { id: String(req.params.id) }
+        });
 
-        if (error || !data) return res.status(404).json({ error: "Problem not found" });
+        if (!data) return res.status(404).json({ error: "Problem not found" });
         res.status(200).json(data);
     } catch (error) {
         console.error(error);
@@ -65,12 +57,67 @@ app.get('/api/problems/:id', async (req: Request, res: Response) => {
 
 app.post('/api/run', async (req: Request, res: Response) => {
     try {
-        const { language, code, testcases } = req.body;
+        const { language, code, testcases, problemId, isSubmit } = req.body;
         // Run code securely
         const responseData = await executeCode(language, code, testcases);
+
+        // Save submission automatically to the database when submitting!
+        if (isSubmit && problemId) {
+            try {
+                const status = responseData.success ? "Accepted" : "Wrong Answer";
+                let defaultUser = await prisma.user.findFirst();
+                
+                // Fallback: Create a mock user if database is empty 
+                if (!defaultUser) {
+                    defaultUser = await prisma.user.create({
+                        data: { username: "demo_user", email: "demo@codex.ai", password: "123" }
+                    });
+                }
+
+                // Verify the problem exists in DB before saving
+                const problemExists = await prisma.problem.findUnique({ where: { id: problemId } });
+                if (problemExists) {
+                    await prisma.submission.create({
+                        data: {
+                            code,
+                            language,
+                            status,
+                            userId: defaultUser.id,
+                            problemId,
+                            runtime: (responseData as any).runtimeMs || null,
+                            memory: 43.85 // Mock memory utilization
+                        }
+                    });
+                }
+            } catch (saveError) {
+                console.error("Failed to save submission to database:", saveError);
+            }
+        }
+
         res.status(200).json(responseData);
     } catch (e: any) {
         res.status(500).json({ success: false, error: e.message || 'Execution failed' });
+    }
+});
+
+// GET user submissions for a specific problem
+app.get('/api/submissions/:problemId', async (req: Request, res: Response) => {
+    try {
+        const defaultUser = await prisma.user.findFirst();
+        if (!defaultUser) return res.json([]);
+
+        const submissions = await prisma.submission.findMany({
+            where: {
+                problemId: String(req.params.problemId),
+                userId: defaultUser.id
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+        
+        res.json(submissions);
+    } catch (error) {
+        console.error("Failed to load submissions:", error);
+        res.status(500).json({ error: "Failed to fetch submissions" });
     }
 });
 
